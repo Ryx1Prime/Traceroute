@@ -2,9 +2,10 @@ import socket
 import struct
 
 class ICMPPacket:
-    def __init__(self, pid, seq):
+    def __init__(self, pid, seq,packet_size):
         self.pid = pid
         self.seq = seq
+        self.packet_size = packet_size
 
     def _calculate_checksum(self, data):
         # rfc 1071
@@ -18,8 +19,11 @@ class ICMPPacket:
         return socket.htons(~s & 0xffff)
 
     def create_request(self):
+        payload_size = self.packet_size - 8
+        if payload_size < 0:
+            payload_size = 0
+        payload = b"Z" * payload_size
         hdr = struct.pack("BBHHH", 8, 0, 0, self.pid, self.seq)
-        payload = b"hello"
         hdr = struct.pack("BBHHH", 8, 0, self._calculate_checksum(hdr + payload), self.pid, self.seq)
         return hdr + payload
 

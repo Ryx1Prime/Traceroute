@@ -8,8 +8,13 @@ from .network import IPUtils, WhoisClient
 
 
 class Tracer:
-    def __init__(self, target_addr):
+    def __init__(self, target_addr, max_ttl=30, timeout=3, num_attempts=3, interval=1, packet_size=40):
         self.target_addr = target_addr
+        self.max_ttl = max_ttl
+        self.timeout = timeout
+        self.num_attempts = num_attempts
+        self.interval = interval
+        self.packet_size = packet_size
         try:
             self.dest_ip = socket.gethostbyname(target_addr)
         except socket.gaierror:
@@ -21,9 +26,9 @@ class Tracer:
 
     def _get_hop(self, sock, ttl):
         ip = None
-        for attempt in range(3):
+        for attempt in range(self.num_attempts):
             seq = ttl * 100 + attempt
-            packet = ICMPPacket(self.pid, seq)
+            packet = ICMPPacket(self.pid, seq, packet_size=self.packet_size)
 
             sock.sendto(packet.create_request(), (self.dest_ip, 0))
             deadline = time.time() + 3
@@ -43,6 +48,8 @@ class Tracer:
                     break
             if ip:
                 break
+            if attempt < self.num_attempts - 1 and self.interval > 0:
+                time.sleep(self.interval)
         return ip
 
     def run(self):
@@ -52,7 +59,7 @@ class Tracer:
             print("Недостаточно прав. Запустите от имени администратора или через sudo")
             sys.exit(1)
 
-        for ttl in range(1, 31):
+        for ttl in range(1, self.max_ttl + 1):
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, ttl)
             ip = self._get_hop(sock, ttl)
 

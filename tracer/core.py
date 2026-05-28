@@ -10,8 +10,9 @@ from .network import IPUtils, WhoisClient
 class Tracer:
     """Класс для управления процессом трассировки маршрута."""
 
-    def __init__(self, target_addr, max_ttl=30, timeout=3, num_attempts=3, interval=1, packet_size=40):
-        """Инициализация настроек трассировки и проверка корректности хоста."""
+    def __init__(self, target_addr, max_ttl=30, timeout=3,
+                 num_attempts=3, interval=1, packet_size=40):
+        """Инициализация настроек трассировки."""
         self.target_addr = target_addr
         self.max_ttl = max_ttl
         self.timeout = timeout
@@ -28,11 +29,13 @@ class Tracer:
         self.whois_client = WhoisClient()
 
     def _get_hop(self, sock, ttl):
-        """Отправка ICMP запросов для одного хопа и ожидание ответа от роутера."""
+        """Отправка ICMP запросов для одного хопа."""
         ip = None
         for attempt in range(self.num_attempts):
             seq = ttl * 100 + attempt
-            packet = ICMPPacket(self.pid, seq, packet_size=self.packet_size)
+            packet = ICMPPacket(
+                self.pid, seq, packet_size=self.packet_size
+            )
 
             sock.sendto(packet.create_request(), (self.dest_ip, 0))
             deadline = time.time() + self.timeout
@@ -57,11 +60,13 @@ class Tracer:
         return ip
 
     def run(self):
-        """Запуск основного цикла трассировки от TTL=1 до цели с выводом инфо."""
+        """Запуск основного цикла трассировки."""
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+            sock = socket.socket(
+                socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP
+            )
         except PermissionError:
-            print("Недостаточно прав. Запустите от имени администратора или через sudo")
+            print("Недостаточно прав. Запустите через sudo")
             sys.exit(1)
 
         for ttl in range(1, self.max_ttl + 1):
@@ -80,14 +85,22 @@ class Tracer:
             if IPUtils.is_local(ip):
                 print("local")
             else:
-                nazvanie, nomer_as, country = self.whois_client.get_info(ip)
+                nazvanie, nomer_as, country = (
+                    self.whois_client.get_info(ip)
+                )
                 stroka = ""
                 if nazvanie:
                     stroka = nazvanie
                 if nomer_as:
-                    stroka = stroka + ", " + nomer_as if stroka else nomer_as
+                    stroka = (
+                        stroka + ", " + nomer_as if stroka
+                        else nomer_as
+                    )
                 if country:
-                    stroka = stroka + ", " + country if stroka else country
+                    stroka = (
+                        stroka + ", " + country if stroka
+                        else country
+                    )
                 if stroka:
                     print(stroka)
 

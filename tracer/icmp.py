@@ -1,18 +1,18 @@
 import socket
 import struct
 
+
 class ICMPPacket:
     """Класс для сборки и проверки правильности ICMP пакетов."""
 
     def __init__(self, pid, seq, packet_size):
-        """Сохраняем ID процесса, номер пакета и общий размер для сборки."""
+        """Сохраняем ID процесса, номер пакета и общий размер."""
         self.pid = pid
         self.seq = seq
         self.packet_size = packet_size
 
     def _calculate_checksum(self, data):
-        """Считаем контрольную сумму для массива байт по стандарту rfc 1071."""
-        # rfc 1071
+        """Считаем контрольную сумму для массива байт."""
         s = 0
         for i in range(0, len(data) - 1, 2):
             s += (data[i] << 8) + data[i + 1]
@@ -23,17 +23,20 @@ class ICMPPacket:
         return socket.htons(~s & 0xffff)
 
     def create_request(self):
-        """Собираем готовый байтовый ICMP-пакет эхо-запроса нужного размера."""
+        """Собираем готовый байтовый ICMP-пакет."""
         payload_size = self.packet_size - 8
         if payload_size < 0:
             payload_size = 0
         payload = b"Z" * payload_size
         hdr = struct.pack("BBHHH", 8, 0, 0, self.pid, self.seq)
-        hdr = struct.pack("BBHHH", 8, 0, self._calculate_checksum(hdr + payload), self.pid, self.seq)
+        chk = self._calculate_checksum(hdr + payload)
+        hdr = struct.pack(
+            "BBHHH", 8, 0, chk, self.pid, self.seq
+        )
         return hdr + payload
 
     def verify_reply(self, raw_data):
-        """Проверяем, что пришедший из сети пакет - это ответ именно на наш запрос."""
+        """Проверяем, что пришедший пакет - ответ на наш запрос."""
         if len(raw_data) < 28:
             return False
         type = raw_data[20]

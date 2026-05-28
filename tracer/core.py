@@ -8,7 +8,10 @@ from .network import IPUtils, WhoisClient
 
 
 class Tracer:
+    """Класс для управления процессом трассировки маршрута."""
+
     def __init__(self, target_addr, max_ttl=30, timeout=3, num_attempts=3, interval=1, packet_size=40):
+        """Инициализация настроек трассировки и проверка корректности хоста."""
         self.target_addr = target_addr
         self.max_ttl = max_ttl
         self.timeout = timeout
@@ -25,13 +28,14 @@ class Tracer:
         self.whois_client = WhoisClient()
 
     def _get_hop(self, sock, ttl):
+        """Отправка ICMP запросов для одного хопа и ожидание ответа от роутера."""
         ip = None
         for attempt in range(self.num_attempts):
             seq = ttl * 100 + attempt
             packet = ICMPPacket(self.pid, seq, packet_size=self.packet_size)
 
             sock.sendto(packet.create_request(), (self.dest_ip, 0))
-            deadline = time.time() + 3
+            deadline = time.time() + self.timeout
 
             while time.time() < deadline:
                 left = deadline - time.time()
@@ -53,6 +57,7 @@ class Tracer:
         return ip
 
     def run(self):
+        """Запуск основного цикла трассировки от TTL=1 до цели с выводом инфо."""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         except PermissionError:
